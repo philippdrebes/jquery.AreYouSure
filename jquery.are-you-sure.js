@@ -20,10 +20,19 @@
 				'change' : null,
 				'silent' : false,
 				'addRemoveFieldsMarksDirty' : false,
-				'fieldEvents' : 'change blur propertychange input',
+				'fieldEvents' : 'change keyup propertychange input',
 				'fieldSelector' : ":input:not(input[type=submit]):not(input[type=button])",
-				'fieldFilter' : null
+				'fieldFilter' : null,
+				'checkFormDelay': 500
 			}, options);
+
+		var aysQueue = new function() {
+		  this.timeout = null;
+			this.add = function(callback) {
+		    if (this.timeout) clearTimeout(this.timeout);
+		    this.timeout = setTimeout(callback, settings.checkFormDelay);
+		  }
+		};
 
 		var getValue = function ($field) {
 			if ($field.hasClass('ays-ignore')
@@ -88,31 +97,33 @@
 				return;
 			}
 
-			$fields = $form.find(settings.fieldSelector);
-			if (settings.fieldFilter !== null) {
-				$fields = $fields.filter(settings.fieldFilter);
-			}
-
-			if (settings.addRemoveFieldsMarksDirty) {
-				// Check if field count has changed
-				var origCount = $form.data("ays-orig-field-count");
-				if (origCount != $fields.length) {
-					setDirtyStatus($form, true);
-					return;
+			aysQueue.add(function() {
+				$fields = $form.find(settings.fieldSelector);
+				if (settings.fieldFilter !== null) {
+					$fields = $fields.filter(settings.fieldFilter);
 				}
-			}
 
-			// Brute force - check each field
-			var isDirty = false;
-			$fields.each(function () {
-				$field = $(this);
-				if (isFieldDirty($field)) {
-					isDirty = true;
-					return false; // break
+				if (settings.addRemoveFieldsMarksDirty) {
+					// Check if field count has changed
+					var origCount = $form.data("ays-orig-field-count");
+					if (origCount != $fields.length) {
+						setDirtyStatus($form, true);
+						return;
+					}
 				}
+
+				// Brute force - check each field
+				var isDirty = false;
+				$fields.each(function () {
+					$field = $(this);
+					if (isFieldDirty($field)) {
+						isDirty = true;
+						return false; // break
+					}
+				});
+
+				setDirtyStatus($form, isDirty);
 			});
-
-			setDirtyStatus($form, isDirty);
 		};
 
 		var initForm = function ($form) {
@@ -120,9 +131,7 @@
 			if (settings.fieldFilter !== null) {
 				fields = fields.filter(settings.fieldFilter);
 			}
-			$(fields).each(function () {
-				storeOrigValue($(this));
-			});
+			$(fields).each(function () { storeOrigValue($(this));	});
 			$(fields).unbind(settings.fieldEvents, checkForm);
 			$(fields).bind(settings.fieldEvents, checkForm);
 			$form.data("ays-orig-field-count", $(fields).length);
@@ -135,13 +144,10 @@
 
 			// Fire change event if required
 			if (changed) {
-				if (settings.change)
-					settings.change.call($form, $form);
+				if (settings.change) settings.change.call($form, $form);
 
-				if (isDirty)
-					$form.trigger('dirty.areYouSure', [$form]);
-				if (!isDirty)
-					$form.trigger('clean.areYouSure', [$form]);
+				if (isDirty) $form.trigger('dirty.areYouSure', [$form]);
+				if (!isDirty)	$form.trigger('clean.areYouSure', [$form]);
 				$form.trigger('change.areYouSure', [$form]);
 			}
 		};
@@ -180,9 +186,7 @@
 						return;
 					}
 					window.aysHasPrompted = true;
-					window.setTimeout(function () {
-						window.aysHasPrompted = false;
-					}, 900);
+					window.setTimeout(function () {	window.aysHasPrompted = false; }, 900);
 				}
 				return settings.message;
 			});
@@ -197,10 +201,7 @@
 			$form.submit(function () {
 				$form.removeClass(settings.dirtyClass);
 			});
-
-			$form.bind('reset', function () {
-				setDirtyStatus($form, false);
-			});
+			$form.bind('reset', function () {	setDirtyStatus($form, false);	});
 			// Add a custom events
 			$form.bind('rescan.areYouSure', rescan);
 			$form.bind('reinitialize.areYouSure', reinitialize);
