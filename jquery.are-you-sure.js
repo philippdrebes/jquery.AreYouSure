@@ -27,11 +27,17 @@
 			}, options);
 
 		var aysQueue = new function() {
-		  this.timeout = null;
-			this.add = function(callback) {
-		    if (this.timeout) clearTimeout(this.timeout);
-		    this.timeout = setTimeout(callback, settings.checkFormDelay);
-		  }
+			this.timeout = null;
+      this.add = function (callback) {
+          this._clearTimeout();
+          this.timeout = setTimeout(callback, settings.checkFormDelay);
+      }
+      this.reset = function() {
+          this._clearTimeout();
+      }
+			this._clearTimeout = function () {
+          if (this.timeout) clearTimeout(this.timeout);
+			}
 		};
 
 		var getValue = function ($field) {
@@ -170,6 +176,7 @@
 		};
 
 		var reinitialize = function () {
+			aysQueue.reset();
 			initForm($(this));
 		}
 
